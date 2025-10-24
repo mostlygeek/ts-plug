@@ -14,6 +14,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"tailscale.com/tsnet"
@@ -104,7 +105,7 @@ func main() {
 	}()
 
 	exitChan := make(chan os.Signal, 1)
-	signal.Notify(exitChan, os.Interrupt)
+	signal.Notify(exitChan, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
 		<-exitChan

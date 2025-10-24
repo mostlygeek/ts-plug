@@ -1,7 +1,24 @@
 BUILD_DIR = build
 
-all: examples
-	go build -o build/ts-plug ./cmd/ts-plug-web
+# Get the current Git hash
+GIT_HASH := $(shell git rev-parse --short HEAD)
+ifneq ($(shell git status --porcelain),)
+    # There are untracked changes
+    GIT_HASH := $(GIT_HASH)+
+endif
+
+# Capture the current build date in RFC3339 format
+BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+
+all: examples darwin linux
+
+darwin:
+	GOOS=darwin GOARCH=arm64 go build -o build/ts-plug-darwin-arm64 ./cmd/ts-plug-web
+
+linux:
+	GOOS=linux GOARCH=arm64 go build -o build/ts-plug-linux-arm64 ./cmd/ts-plug-web
+	GOOS=linux GOARCH=amd64 go build -o build/ts-plug-linux-amd64 ./cmd/ts-plug-web
 
 clean:
 	rm -rf $(BUILD_DIR)/*
