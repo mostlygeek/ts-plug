@@ -100,11 +100,10 @@ func main() {
 	}()
 
 	// this is closed when the command exits
-	cmdChan := make(chan struct{})
+	cmdChan := make(chan error)
 
 	go func() {
-		cmd.Wait()
-		cmdChan <- struct{}{}
+		cmdChan <- cmd.Wait()
 	}()
 
 	exitChan := make(chan os.Signal, 1)
@@ -211,6 +210,6 @@ func main() {
 		httpServer.Serve(l)
 	}(tl)
 
-	<-cmdChan
-	slog.Info("cmd exited")
+	err = <-cmdChan
+	slog.Info("cmd exited", "error", err)
 }
