@@ -53,9 +53,9 @@ func main() {
 		return
 	}
 
-	// start the command
-	cmdContext, cmdCancel := context.WithCancel(context.Background())
-	cmd := exec.CommandContext(cmdContext, cmdArgs[0], cmdArgs[1:]...)
+	// create a context that can be cancelled to stop upstream and tsnet
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	cmd := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
 
 	// capture stdout/stderr before starting the command
 	stdoutPipe, err := cmd.StdoutPipe()
@@ -98,19 +98,22 @@ func main() {
 			slog.Error("reading stderr failed", "error", err)
 		}
 	}()
+
+	// this is closed when the command exits
 	cmdChan := make(chan struct{})
+
 	go func() {
 		cmd.Wait()
 		cmdChan <- struct{}{}
 	}()
 
 	exitChan := make(chan os.Signal, 1)
-	signal.Notify(exitChan, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(exitChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 
 	go func() {
 		<-exitChan
-		slog.Info("interrupt, shutting down upstream")
-		cmdCancel()
+		slog.Info("signal received, shutting down...")
+		cancelCtx()
 	}()
 
 	// start the tsnet listener
@@ -127,7 +130,7 @@ func main() {
 		}
 	}
 
-	st, err := ts.Up(context.Background())
+	st, err := ts.Up(ctx)
 	if err != nil {
 		slog.Error("error starting tsnet server", slog.Any("error", err))
 		os.Exit(1)
