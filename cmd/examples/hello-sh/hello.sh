@@ -143,7 +143,11 @@ handle_request() {
 # Start server
 start_server() {
   bind_addr="$HOST"
-  [ -z "$bind_addr" ] || [ "$bind_addr" = "localhost" ] && bind_addr="127.0.0.1"
+
+  # Normalize localhost to 127.0.0.1
+  if [ -z "$bind_addr" ] || [ "$bind_addr" = "localhost" ]; then
+    bind_addr="127.0.0.1"
+  fi
 
   # Create response FIFO
   response_fifo="/tmp/http_response_$$"
@@ -154,10 +158,20 @@ start_server() {
 
   echo "Starting server on ${bind_addr}:${PORT}" >&2
 
+  # Detect netcat variant and use appropriate syntax
+  # Check if this is GNU netcat (has -p option in help)
+  if nc -h 2>&1 | grep -q "GNU netcat"; then
+    # GNU netcat (Linux)
+    nc_listen() { nc -l -s "$bind_addr" -p "$PORT"; }
+  else
+    # BSD netcat syntax (macOS, FreeBSD)
+    nc_listen() { nc -l "$bind_addr" "$PORT"; }
+  fi
+
   # Server loop
   while true; do
     # Start nc listening in background, feed it from our response fifo
-    nc -l "$bind_addr" "$PORT" < "$response_fifo" | handle_request > "$response_fifo" &
+    nc_listen < "$response_fifo" | handle_request > "$response_fifo" &
     wait $!
   done
 }

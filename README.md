@@ -8,32 +8,32 @@ Turn a web server written in anything into a `tsnet.Server{}` with identity info
 $ make
 
 # go
-$ ./build/ts-plug-web -- ./build/hello
+$ ./build/ts-plug -- ./build/hello
 
 # node
-$ ./build/ts-plug-web -- cmd/examples/hello-node/hello.js
+$ ./build/ts-plug -- cmd/examples/hello-node/hello.js
 
 # python
-$ ./build/ts-plug-web -- cmd/examples/hello-python/hello.py
+$ ./build/ts-plug -- cmd/examples/hello-python/hello.py
 
 # ruby
-$ ./build/ts-plug-web -- cmd/examples/hello-ruby/hello.rb
+$ ./build/ts-plug -- cmd/examples/hello-ruby/hello.rb
 
 # perl
-$ ./build/ts-plug-web -- cmd/examples/hello-perl/hello.pl
+$ ./build/ts-plug -- cmd/examples/hello-perl/hello.pl
 
-# bash, can't forget the GOAT
-$ ./build/ts-plug-web -- cmd/examples/hello-sh/hello.sh
+# bash ... because we can!
+$ ./build/ts-plug -- cmd/examples/hello-sh/hello.sh
 ```
 
 Add `-funnel` to make it also accessible over the Internet (no identity though)
 
 ```sh
 # go
-$ ./build/ts-plug-web -funnel -- ./build/hello
+$ ./build/ts-plug -funnel -- ./build/hello
 
 # node
-$ ./build/ts-plug-web -funnel -- cmd/examples/hello-node/hello.js
+$ ./build/ts-plug -funnel -- cmd/examples/hello-node/hello.js
 
 # ... etc.
 ```

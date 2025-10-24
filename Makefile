@@ -1,7 +1,7 @@
 BUILD_DIR = build
 
 all: examples
-	go build -o build/ts-plug-web ./cmd/ts-plug-web
+	go build -o build/ts-plug ./cmd/ts-plug-web
 
 clean:
 	rm -rf $(BUILD_DIR)/*
