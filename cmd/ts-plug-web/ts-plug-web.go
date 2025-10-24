@@ -53,19 +53,21 @@ func main() {
 		return
 	}
 
+	// cmdExitChannel receives the error when cmd.Wait() return
+	cmdExitChan := make(chan error)
+
+	// signalChan receives OS signals for shutdown
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+
 	// create a context that can be cancelled to stop upstream and tsnet
 	ctx, cancelCtx := context.WithCancel(context.Background())
-	cmd := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
 
-	// capture stdout/stderr before starting the command
-	stdoutPipe, err := cmd.StdoutPipe()
-	if err != nil {
-		slog.Error("failed to get stdout pipe", "error", err)
-		os.Exit(1)
-	}
-	stderrPipe, err := cmd.StderrPipe()
-	if err != nil {
-		slog.Error("failed to get stderr pipe", "error", err)
+	// start the child process that will handle requests
+	cmd := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
+	cmd.Env = append(os.Environ(), "TSPLUG_ACTIVE=1")
+	if err := attachLogging(cmd); err != nil {
+		slog.Error("failed to attach logging to cmd", "error", err)
 		os.Exit(1)
 	}
 
@@ -75,6 +77,141 @@ func main() {
 		os.Exit(1)
 	} else {
 		slog.Info("command started")
+	}
+
+	// handle the exit cases either from signal or the upstream command exiting
+	go func() {
+		for {
+			select {
+			case cmdExitChan <- cmd.Wait():
+				// the upstream command has exited, we're
+				return
+			case sig := <-signalChan:
+				slog.Info("signal received, shutting down...", "sig", sig.String())
+
+				// this will cause the case above with cmd.Wait() to return
+				// as well ts.Up() to exit early if it hasn't been fully initialized yet
+				cancelCtx()
+			}
+		}
+	}()
+
+	ts := &tsnet.Server{
+		Hostname: *flagHostname,
+		Dir:      *flagDir,
+	}
+
+	if *flagDebugTSNet {
+		ts.Logf = func(format string, args ...any) {
+			cur := slog.SetLogLoggerLevel(slog.LevelDebug) // force debug if this option is on
+			slog.Debug(fmt.Sprintf(format, args...))
+			slog.SetLogLoggerLevel(cur)
+		}
+	}
+
+	// start the tsnet server. important to give it a cancellable context
+	// because ts only listens for SIGHUP to interrupt connecting to the tailnet
+	// and causes the program to ignore SIGINT/SIGTERM. canceling the context
+	// will cause ts.Up() to exit early
+	st, err := ts.Up(ctx)
+	if err != nil {
+		slog.Error("error starting tsnet server", slog.Any("error", err))
+		cancelCtx()
+		os.Exit(1)
+	}
+
+	lc, err := ts.LocalClient()
+	if err != nil {
+		slog.Error("Failed to get tsnet LocalClient", "error", err)
+		cancelCtx()
+		os.Exit(1)
+	}
+
+	var tl net.Listener
+	if *flagFunnel {
+		tl, err = ts.ListenFunnel("tcp", ":443")
+		if err != nil {
+			slog.Error("failed to listen on funnel", "error", err)
+			cancelCtx()
+			os.Exit(1)
+		}
+		slog.Info(fmt.Sprintf("listening at (FUNNEL): https://%s", strings.TrimSuffix(st.Self.DNSName, ".")))
+	} else {
+		tl, err = ts.ListenTLS("tcp", ":443")
+		if err != nil {
+			slog.Error("error tailnet listening", slog.Any("error", err))
+			cancelCtx()
+			os.Exit(1)
+		} else {
+			slog.Info(fmt.Sprintf("listening at: https://%s", strings.TrimSuffix(st.Self.DNSName, ".")))
+		}
+	}
+
+	u, err := url.Parse(fmt.Sprintf("http://localhost:%d", *flagPort))
+	if err != nil {
+		slog.Error("invalid upstream", "error", err)
+		cancelCtx()
+		os.Exit(1)
+	}
+
+	proxy := httputil.NewSingleHostReverseProxy(u)
+	proxy.Transport = &http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout: 2 * time.Second,
+		}).DialContext,
+		ResponseHeaderTimeout: time.Second,
+	}
+
+	// whoisHandler injects whois information into the request headers
+	whoisHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var ul, dn, pp string
+
+		who, err := lc.WhoIs(r.Context(), r.RemoteAddr)
+		if err != nil {
+			slog.Error("whois lookup failed", "error", err, "remote", r.RemoteAddr)
+		} else if who.UserProfile != nil && who.UserProfile.LoginName != "tagged-devices" {
+			slog.Debug("set Tailscale-* headers",
+				slog.String("remote", r.RemoteAddr),
+				slog.String("id", who.UserProfile.ID.String()),
+			)
+
+			ul = who.UserProfile.LoginName
+			dn = who.UserProfile.DisplayName
+			pp = who.UserProfile.ProfilePicURL
+		}
+
+		// always populate the headers, even if blank for security reasons.
+		r.Header.Set("Tailscale-User-Login", ul)
+		r.Header.Set("Tailscale-User-Name", dn)
+		r.Header.Set("Tailscale-User-Profile-Pic", pp)
+
+		proxy.ServeHTTP(w, r)
+	})
+
+	// Start the proxy server
+	go func() {
+		httpServer := &http.Server{
+			Handler: whoisHandler,
+		}
+		httpServer.Serve(tl)
+	}()
+
+	err = <-cmdExitChan
+	slog.Info("cmd exited", "error", err)
+}
+
+// attachLogging attaches logging to a command's stdout and stderr
+// and logs them to the slog logger.
+// It returns an error if it fails to attach the pipes.
+func attachLogging(cmd *exec.Cmd) error {
+
+	stdoutPipe, err := cmd.StdoutPipe()
+	if err != nil {
+		return err
+	}
+	stderrPipe, err := cmd.StderrPipe()
+	if err != nil {
+		return err
 	}
 
 	// log stdout
@@ -99,117 +236,5 @@ func main() {
 		}
 	}()
 
-	// this is closed when the command exits
-	cmdChan := make(chan error)
-
-	go func() {
-		cmdChan <- cmd.Wait()
-	}()
-
-	exitChan := make(chan os.Signal, 1)
-	signal.Notify(exitChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
-
-	go func() {
-		<-exitChan
-		slog.Info("signal received, shutting down...")
-		cancelCtx()
-	}()
-
-	// start the tsnet listener
-	ts := &tsnet.Server{
-		Hostname: *flagHostname,
-		Dir:      *flagDir,
-	}
-
-	if *flagDebugTSNet {
-		ts.Logf = func(format string, args ...any) {
-			cur := slog.SetLogLoggerLevel(slog.LevelDebug) // force debug if this option is on
-			slog.Debug(fmt.Sprintf(format, args...))
-			slog.SetLogLoggerLevel(cur)
-		}
-	}
-
-	st, err := ts.Up(ctx)
-	if err != nil {
-		slog.Error("error starting tsnet server", slog.Any("error", err))
-		os.Exit(1)
-	}
-
-	lc, err := ts.LocalClient()
-	if err != nil {
-		slog.Error("Failed to get tsnet LocalClient", "error", err)
-		os.Exit(1)
-	}
-
-	var tl net.Listener
-	if *flagFunnel {
-		tl, err = ts.ListenFunnel("tcp", ":443")
-		if err != nil {
-			slog.Error("failed to listen on funnel", "error", err)
-			os.Exit(1)
-		}
-		slog.Info(fmt.Sprintf("listening at (FUNNEL): https://%s", strings.TrimSuffix(st.Self.DNSName, ".")))
-	} else {
-		tl, err = ts.ListenTLS("tcp", ":443")
-		if err != nil {
-			slog.Error("error tailnet listening", slog.Any("error", err))
-			os.Exit(1)
-		} else {
-			slog.Info(fmt.Sprintf("listening at: https://%s", strings.TrimSuffix(st.Self.DNSName, ".")))
-		}
-	}
-
-	u, err := url.Parse(fmt.Sprintf("http://localhost:%d", *flagPort))
-	if err != nil {
-		slog.Error("invalid upstream", "error", err)
-		os.Exit(1)
-	}
-
-	proxy := httputil.NewSingleHostReverseProxy(u)
-	proxy.Transport = &http.Transport{
-		DialContext: (&net.Dialer{
-			Timeout: 2 * time.Second,
-		}).DialContext,
-		ResponseHeaderTimeout: time.Second,
-	}
-
-	// Create a wrapper handler that processes requests before the proxy
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-		// blank values for user info
-		var ul, dn, pp string
-
-		who, err := lc.WhoIs(r.Context(), r.RemoteAddr)
-		if err != nil {
-			slog.Error("whois lookup failed", "error", err, "remote", r.RemoteAddr)
-		} else if who.UserProfile != nil && who.UserProfile.LoginName != "tagged-devices" {
-			slog.Debug("set Tailscale-* headers",
-				slog.String("remote", r.RemoteAddr),
-				slog.String("id", who.UserProfile.ID.String()),
-			)
-
-			ul = who.UserProfile.LoginName
-			dn = who.UserProfile.DisplayName
-			pp = who.UserProfile.ProfilePicURL
-		}
-
-		// always populate the headers, even if blank
-		// for security reasons.
-		r.Header.Set("Tailscale-User-Login", ul)
-		r.Header.Set("Tailscale-User-Name", dn)
-		r.Header.Set("Tailscale-User-Profile-Pic", pp)
-
-		// Now pass the request to the proxy
-		proxy.ServeHTTP(w, r)
-	})
-
-	go func(l net.Listener) {
-		httpServer := &http.Server{
-			Handler: handler,
-		}
-		httpServer.Serve(l)
-	}(tl)
-
-	err = <-cmdChan
-	slog.Info("cmd exited", "error", err)
+	return nil
 }
