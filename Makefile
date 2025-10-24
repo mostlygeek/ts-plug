@@ -24,7 +24,7 @@ clean:
 	rm -rf $(BUILD_DIR)/*
 
 examples:
-	go build -o $(BUILD_DIR)/hello ./cmd/examples/hello-go
+	go build -o $(BUILD_DIR)/hello ./cmd/examples/hello/hello.go
 
 # use cached test results while developing
 test: examples
