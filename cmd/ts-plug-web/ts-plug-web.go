@@ -176,7 +176,10 @@ func main() {
 
 	// Create a wrapper handler that processes requests before the proxy
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Get client info from tailscale
+
+		// blank values for user info
+		var ul, dn, pp string
+
 		who, err := lc.WhoIs(r.Context(), r.RemoteAddr)
 		if err != nil {
 			slog.Error("whois lookup failed", "error", err, "remote", r.RemoteAddr)
@@ -185,10 +188,17 @@ func main() {
 				slog.String("remote", r.RemoteAddr),
 				slog.String("id", who.UserProfile.ID.String()),
 			)
-			r.Header.Set("Tailscale-User-Login", who.UserProfile.LoginName)
-			r.Header.Set("Tailscale-User-Name", who.UserProfile.DisplayName)
-			r.Header.Set("Tailscale-User-Profile-Pic", who.UserProfile.ProfilePicURL)
+
+			ul = who.UserProfile.LoginName
+			dn = who.UserProfile.DisplayName
+			pp = who.UserProfile.ProfilePicURL
 		}
+
+		// always populate the headers, even if blank
+		// for security reasons.
+		r.Header.Set("Tailscale-User-Login", ul)
+		r.Header.Set("Tailscale-User-Name", dn)
+		r.Header.Set("Tailscale-User-Profile-Pic", pp)
 
 		// Now pass the request to the proxy
 		proxy.ServeHTTP(w, r)
