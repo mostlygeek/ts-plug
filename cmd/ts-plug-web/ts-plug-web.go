@@ -109,10 +109,12 @@ func main() {
 		}
 	}
 
-	// start the tsnet server. important to give it a cancellable context
-	// because ts only listens for SIGHUP to interrupt connecting to the tailnet
-	// and causes the program to ignore SIGINT/SIGTERM. canceling the context
-	// will cause ts.Up() to exit early
+	// start the tsnet server. ts.Up() blocks in a loop calling watcher.Next()
+	// which performs json.Decoder.Decode() on an HTTP response body stream. The
+	// cancellable context passed here ensures that when the signal handler calls
+	// cancelCtx() (lines 89-94), the underlying HTTP request is cancelled, causing
+	// the Decode() to return an error and ts.Up() to exit early. Without a
+	// cancellable context, ts.Up() would hang indefinitely on SIGINT/SIGTERM
 	st, err := ts.Up(ctx)
 	if err != nil {
 		slog.Error("error starting tsnet server", slog.Any("error", err))
