@@ -1,6 +1,10 @@
-# ts-plug
+> [!WARNING]
+> Lots of Work in Progress stuff here!
 
-Turn a web server written in anything into a `tsnet.Server{}` with identity information...
+# Dude, Where's my Sidecar?!
+
+- Turn a web server written in anything into a `tsnet.Server{}` with identity information.
+- Also `docker` contains various no-side car docker containers I'm testing
 
 ## usage
 

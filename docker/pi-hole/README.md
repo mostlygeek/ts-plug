@@ -2,8 +2,8 @@
 
 ```sh
 # build container
-$ docker buildx build --platform linux/amd64,linux/arm64 -t mostlygeek/ts-plug:pihold-latest -f docker/pi-hole/Dockerfile --load .
+$ docker buildx build --platform linux/amd64,linux/arm64 -t mostlygeek/ts-plug:pihold-2025.10.03 -f docker/pi-hole/Dockerfile --load .
 
 # run container
-$ docker run -it --rm --name "tsplug-dns" -v tsplug-dns:/var/run/tsnet mostlygeek/ts-plug:pihold-latest
+$ docker run -it --rm --name "tsplug-dns" -v tsplug-dns:/var/run/tsnet mostlygeek/ts-plug:pihold-2025.10.03
 ```
