@@ -20,8 +20,8 @@ darwin:
 linux:
 	GOOS=linux GOARCH=arm64 go build -o build/ts-plug-linux-arm64 ./cmd/ts-plug-web
 	GOOS=linux GOARCH=amd64 go build -o build/ts-plug-linux-amd64 ./cmd/ts-plug-web
-	GOOS=darwin GOARCH=arm64 go build -o build/ts-multi-plug-darwin-amd64 ./cmd/ts-multi-plug
-	GOOS=darwin GOARCH=arm64 go build -o build/ts-multi-plug-darwin-arm64 ./cmd/ts-multi-plug
+	GOOS=linux GOARCH=arm64 go build -o build/ts-multi-plug-darwin-amd64 ./cmd/ts-multi-plug
+	GOOS=linux GOARCH=arm64 go build -o build/ts-multi-plug-darwin-arm64 ./cmd/ts-multi-plug
 
 clean:
 	rm -rf $(BUILD_DIR)/*
