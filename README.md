@@ -1,12 +1,12 @@
 > [!WARNING]
 > Lots of Work in Progress stuff here!
 
-# ts-multi-plug
+# ts-plug
 
 One line to turn a server written in anything into an application node on your Tailnet!
 
 ```sh
-$ ./ts-multi-plug -hostname hello -- hello.js
+$ ./ts-plug -hostname hello -- hello.js
 ```
 
 ## More examples
@@ -16,22 +16,22 @@ $ ./ts-multi-plug -hostname hello -- hello.js
 $ make
 
 # go
-$ ./build/ts-multi-plug -hn hello -- ./build/hello
+$ ./build/ts-plug -hn hello -- ./build/hello
 
 # node
-$ ./build/ts-multi-plug -hn hello -- cmd/examples/hello-node/hello.js
+$ ./build/ts-plug -hn hello -- cmd/examples/hello-node/hello.js
 
 # python
-$ ./build/ts-multi-plug -hn hello -- cmd/examples/hello-python/hello.py
+$ ./build/ts-plug -hn hello -- cmd/examples/hello-python/hello.py
 
 # ruby
-$ ./build/ts-multi-plug -hn hello -- cmd/examples/hello-ruby/hello.rb
+$ ./build/ts-plug -hn hello -- cmd/examples/hello-ruby/hello.rb
 
 # perl
-$ ./build/ts-multi-plug -hn hello -- cmd/examples/hello-perl/hello.pl
+$ ./build/ts-plug -hn hello -- cmd/examples/hello-perl/hello.pl
 
 # bash ... but of course!
-$ ./build/ts-multi-plug -hn hello -- cmd/examples/hello-sh/hello.sh
+$ ./build/ts-plug -hn hello -- cmd/examples/hello-sh/hello.sh
 
 ```
 
@@ -47,12 +47,12 @@ Add `-funnel` to make it also accessible over the Internet (no identity though)
 # Try accessing this with Tailscale connected and disconnected. Your
 # identity is automatically available in to the hello server
 
-$ ./build/ts-multi-plug -hn hello -funnel -- ./build/hello
+$ ./build/ts-plug -hn hello -funnel -- ./build/hello
 ```
 
 ## Dude, Where's my Sidecar?!
 
-Using `ts-multi-plug` it is possible to remove the need for a tailscale sidecar
-when running containerized applications. In the `docker/` folder are examples injecting
-in `ts-multi-plug` and having it be the entrypoint. It is still very
+Using `ts-plug` it is possible to remove the need for a tailscale sidecar
+when running containerized applications. In the `docker/` folder are examples
+injecting in `ts-plug` and having it be the entrypoint. It is still very
 experimental but initial experiments are positive.

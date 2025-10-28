@@ -12,14 +12,14 @@ BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 
 all: examples darwin linux
-	go build -o build/ts-multi-plug ./cmd/ts-multi-plug
+	go build -o build/ts-plug ./cmd/ts-multi-plug
 
 darwin:
-	GOOS=darwin GOARCH=arm64 go build -o build/ts-multi-plug-darwin-arm64 ./cmd/ts-multi-plug
+	GOOS=darwin GOARCH=arm64 go build -o build/ts-plug-darwin-arm64 ./cmd/ts-multi-plug
 
 linux:
-	GOOS=linux GOARCH=arm64 go build -o build/ts-multi-plug-linux-arm64 ./cmd/ts-multi-plug
-	GOOS=linux GOARCH=amd64 go build -o build/ts-multi-plug-linux-amd64 ./cmd/ts-multi-plug
+	GOOS=linux GOARCH=arm64 go build -o build/ts-plug-linux-arm64 ./cmd/ts-multi-plug
+	GOOS=linux GOARCH=amd64 go build -o build/ts-plug-linux-amd64 ./cmd/ts-multi-plug
 
 clean:
 	rm -rf $(BUILD_DIR)/*

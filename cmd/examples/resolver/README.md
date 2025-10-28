@@ -1,6 +1,6 @@
 # Fake DNS Resolver for Testing
 
-A simple DNS server that responds to all queries with fixed values. Useful for testing `ts-multi-plug -dns`.
+A simple DNS server that responds to all queries with fixed values. Useful for testing `ts-plug -dns`.
 
 ## Supported Record Types
 
@@ -29,10 +29,11 @@ go run cmd/examples/resolver/resolver.go -port 5353 -domain example.com
 ```
 
 Available flags:
+
 - `-port`: Port to listen on (default: `53`)
 - `-domain`: Domain to use for CNAME and MX responses (default: `tailscale.com`)
 
-## Testing with ts-multi-plug
+## Testing with ts-plug
 
 1. Start the fake DNS resolver on a local port:
 
