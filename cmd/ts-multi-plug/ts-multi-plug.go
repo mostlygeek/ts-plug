@@ -22,70 +22,6 @@ import (
 	"tailscale.com/tsnet"
 )
 
-type PortMapFlag struct {
-	In    int
-	Out   int
-	isSet bool
-
-	defaultIn  int
-	defaultOut int
-}
-
-// NewPortMapFlag creates a new PortMapFlag with default in/out ports
-func NewPortMapFlag(in, out int) *PortMapFlag {
-	return &PortMapFlag{
-		defaultIn:  in,
-		defaultOut: out,
-	}
-}
-
-func (p *PortMapFlag) String() string {
-	if !p.isSet {
-		return fmt.Sprintf("%d:%d", p.defaultIn, p.defaultOut)
-	}
-	return fmt.Sprintf("%d:%d", p.In, p.Out)
-}
-
-func (p *PortMapFlag) IsSet() bool {
-	return p.isSet
-}
-
-func (p *PortMapFlag) Set(value string) error {
-	p.isSet = true
-
-	if value == "" {
-		p.In = p.defaultIn
-		p.Out = p.defaultOut
-		return nil
-	}
-
-	// Parse the input string in the format "in:out" or "port"
-	parts := strings.Split(value, ":")
-	if len(parts) == 1 {
-		// If only one part, treat it as both in and out
-		port, err := strconv.Atoi(parts[0])
-		if err != nil {
-			return fmt.Errorf("invalid port format: %s", value)
-		}
-		p.In = port
-		p.Out = port
-
-	} else if len(parts) == 2 {
-		// If two parts, parse as in:out
-		inPort, err := strconv.Atoi(parts[0])
-		if err != nil {
-			return fmt.Errorf("invalid in port format: %s", parts[0])
-		}
-		outPort, err := strconv.Atoi(parts[1])
-		if err != nil {
-			return fmt.Errorf("invalid out port format: %s", parts[1])
-		}
-		p.In = inPort
-		p.Out = outPort
-	}
-	return nil
-}
-
 var (
 	flagHostname   = flag.String("hostname", "tsmultiplug", "hostname on tailnet")
 	flagDir        = flag.String("dir", ".data", "directory to store tailscale state")
@@ -103,12 +39,15 @@ var (
 	// DNS flags
 	dnsEnable = flag.Bool("dns", false, "Enable DNS listener (default 53:53)")
 	flagDNS   = NewPortMapFlag(53, 53)
+
+	flagFunnel = flag.Bool("funnel", false, "Enable funnel for https listener")
 )
 
 func init() {
 	flag.Var(flagHttp, "http-port", "HTTP port mapping (in:out or port)")
 	flag.Var(flagHttps, "https-port", "HTTPS port mapping (in:out or port)")
 	flag.Var(flagDNS, "dns-port", "DNS port mapping (in:out or port)")
+
 }
 
 func main() {
@@ -244,7 +183,7 @@ func main() {
 	// Start HTTPS listener if enabled
 	if flagHttps.IsSet() {
 		go func() {
-			if err := startHTTPSListener(ctx, ts, lc, hostname, flagHttps); err != nil {
+			if err := startHTTPSListener(ctx, ts, lc, hostname, flagHttps, *flagFunnel); err != nil {
 				slog.Error("HTTPS listener failed", "error", err)
 				cancelCtx()
 			}
@@ -295,14 +234,27 @@ func startHTTPListener(ctx context.Context, ts *tsnet.Server, lc *local.Client, 
 }
 
 // startHTTPSListener starts an HTTPS listener on the tailnet
-func startHTTPSListener(ctx context.Context, ts *tsnet.Server, lc *local.Client, hostname string, portMap *PortMapFlag) error {
-	listener, err := ts.ListenTLS("tcp", fmt.Sprintf(":%d", portMap.In))
-	if err != nil {
-		return fmt.Errorf("failed to listen on HTTPS port %d: %w", portMap.In, err)
-	}
-	defer listener.Close()
+func startHTTPSListener(ctx context.Context, ts *tsnet.Server, lc *local.Client, hostname string, portMap *PortMapFlag, useFunnel bool) error {
 
-	slog.Info(fmt.Sprintf("listening at (HTTPS): https://%s:%d", hostname, portMap.In))
+	var listener net.Listener
+	var err error
+
+	if useFunnel {
+		listener, err = ts.ListenFunnel("tcp", ":443")
+		if err != nil {
+			return fmt.Errorf("failed to listen to funnel port 443")
+		}
+		defer listener.Close()
+		slog.Info(fmt.Sprintf("listening at (FUNNEL HTTPS): https://%s", hostname))
+
+	} else {
+		listener, err = ts.ListenTLS("tcp", fmt.Sprintf(":%d", portMap.In))
+		if err != nil {
+			return fmt.Errorf("failed to listen on HTTPS port %d: %w", portMap.In, err)
+		}
+		defer listener.Close()
+		slog.Info(fmt.Sprintf("listening at (HTTPS): https://%s:%d", hostname, portMap.In))
+	}
 
 	proxy := createReverseProxy(portMap.Out)
 	whoisHandler := createWhoisHandler(lc, proxy)
@@ -376,13 +328,13 @@ func startDNSListener(ctx context.Context, ts *tsnet.Server, lc *local.Client, h
 			}
 
 			// Forward to upstream DNS server
-			go handleDNSQuery(ctx, buffer[:n], clientAddr, tsConn, upstreamAddr)
+			go handleDNSQuery(buffer[:n], clientAddr, tsConn, upstreamAddr)
 		}
 	}
 }
 
 // handleDNSQuery forwards a DNS query to upstream and sends response back
-func handleDNSQuery(ctx context.Context, query []byte, clientAddr net.Addr, tsConn net.PacketConn, upstreamAddr string) {
+func handleDNSQuery(query []byte, clientAddr net.Addr, tsConn net.PacketConn, upstreamAddr string) {
 	// Create connection to upstream DNS
 	upstreamConn, err := net.Dial("udp", upstreamAddr)
 	if err != nil {
@@ -500,5 +452,69 @@ func attachLogging(cmd *exec.Cmd) error {
 		}
 	}()
 
+	return nil
+}
+
+type PortMapFlag struct {
+	In    int
+	Out   int
+	isSet bool
+
+	defaultIn  int
+	defaultOut int
+}
+
+// NewPortMapFlag creates a new PortMapFlag with default in/out ports
+func NewPortMapFlag(in, out int) *PortMapFlag {
+	return &PortMapFlag{
+		defaultIn:  in,
+		defaultOut: out,
+	}
+}
+
+func (p *PortMapFlag) String() string {
+	if !p.isSet {
+		return fmt.Sprintf("%d:%d", p.defaultIn, p.defaultOut)
+	}
+	return fmt.Sprintf("%d:%d", p.In, p.Out)
+}
+
+func (p *PortMapFlag) IsSet() bool {
+	return p.isSet
+}
+
+func (p *PortMapFlag) Set(value string) error {
+	p.isSet = true
+
+	if value == "" {
+		p.In = p.defaultIn
+		p.Out = p.defaultOut
+		return nil
+	}
+
+	// Parse the input string in the format "in:out" or "port"
+	parts := strings.Split(value, ":")
+	if len(parts) == 1 {
+		// If only one part, treat it as both in and out
+		port, err := strconv.Atoi(parts[0])
+		if err != nil {
+			return fmt.Errorf("invalid port format: %s", value)
+		}
+		p.In = port
+		p.Out = port
+
+	} else if len(parts) == 2 {
+		// If two parts, parse as in:out
+		inPort, err := strconv.Atoi(parts[0])
+		if err != nil {
+			return fmt.Errorf("invalid in port format: %s", parts[0])
+		}
+		outPort, err := strconv.Atoi(parts[1])
+		if err != nil {
+			return fmt.Errorf("invalid out port format: %s", parts[1])
+		}
+		p.In = inPort
+		p.Out = outPort
+	}
 	return nil
 }
