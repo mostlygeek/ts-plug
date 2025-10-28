@@ -23,9 +23,9 @@ import (
 )
 
 var (
-	flagHostname   = flag.String("hostname", "tsmultiplug", "hostname on tailnet")
-	flagDir        = flag.String("dir", ".data", "directory to store tailscale state")
-	flagLogLevel   = flag.String("log", "info", "Log level (debug | info | warn | error)")
+	flagHostname   string
+	flagDir        string
+	flagLogLevel   string
 	flagDebugTSNet = flag.Bool("debug-tsnet", false, "enable tsnet.Server logging")
 
 	// HTTP flags
@@ -48,13 +48,17 @@ func init() {
 	flag.Var(flagHttps, "https-port", "HTTPS port mapping (in:out or port)")
 	flag.Var(flagDNS, "dns-port", "DNS port mapping (in:out or port)")
 
+	flag.StringVar(&flagHostname, "hostname", "tsmultiplug", "hostname on tailnet")
+	flag.StringVar(&flagHostname, "hn", "tsmultiplug", "hostname on tailnet (short)")
+	flag.StringVar(&flagDir, "dir", ".data", "directory to store tailscale state")
+	flag.StringVar(&flagLogLevel, "log", "info", "Log level (debug | info | warn | error)")
 }
 
 func main() {
 	flag.Parse()
 
 	// Set log level
-	switch *flagLogLevel {
+	switch flagLogLevel {
 	case "debug":
 		slog.SetLogLoggerLevel(slog.LevelDebug)
 	case "info":
@@ -64,8 +68,21 @@ func main() {
 	case "error":
 		slog.SetLogLoggerLevel(slog.LevelError)
 	default:
-		slog.Error("unknown log level", slog.String("level", *flagLogLevel))
+		slog.Error("unknown log level", slog.String("level", flagLogLevel))
 		os.Exit(1)
+	}
+
+	// Everything after "--" goes into cmdArgs
+	cmdArgs := flag.Args()
+	if len(cmdArgs) == 0 {
+		slog.Error("no command to run")
+		os.Exit(1)
+	}
+
+	// Check that at least one listener is enabled
+	if !flagHttp.IsSet() && !flagHttps.IsSet() && !flagDNS.IsSet() {
+		slog.Info("no listeners enabled, using HTTPS by default")
+		*httpsEnable = true
 	}
 
 	// If boolean flag is set but no custom port, use defaults
@@ -77,19 +94,6 @@ func main() {
 	}
 	if *dnsEnable && !flagDNS.IsSet() {
 		flagDNS.Set("")
-	}
-
-	// Check that at least one listener is enabled
-	if !flagHttp.IsSet() && !flagHttps.IsSet() && !flagDNS.IsSet() {
-		slog.Error("at least one listener must be enabled (-http, -https, or -dns)")
-		os.Exit(1)
-	}
-
-	// Everything after "--" goes into cmdArgs
-	cmdArgs := flag.Args()
-	if len(cmdArgs) == 0 {
-		slog.Error("no command to run")
-		os.Exit(1)
 	}
 
 	// cmdExitChannel receives the error when cmd.Wait() return
@@ -136,8 +140,8 @@ func main() {
 	}()
 
 	ts := &tsnet.Server{
-		Hostname: *flagHostname,
-		Dir:      *flagDir,
+		Hostname: flagHostname,
+		Dir:      flagDir,
 	}
 
 	if *flagDebugTSNet {
@@ -235,7 +239,6 @@ func startHTTPListener(ctx context.Context, ts *tsnet.Server, lc *local.Client, 
 
 // startHTTPSListener starts an HTTPS listener on the tailnet
 func startHTTPSListener(ctx context.Context, ts *tsnet.Server, lc *local.Client, hostname string, portMap *PortMapFlag, useFunnel bool) error {
-
 	var listener net.Listener
 	var err error
 

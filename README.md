@@ -3,48 +3,56 @@
 
 # ts-multi-plug
 
-Turn a server written in anything into a `tsnet.Server{}`.
-
-## Dude, Where's my Sidecar?!
-
-The Docker sidecar pattern using `tailscale/tailscale` is the most common pattern to host applications on a tailnet. This repo explores a new no-sidecar approach. What we do differently is:
-
-1. Introduce `ts-multi-plug`, a `tsnet.Server{}` reverse proxy that also spawns a child server process.
-   - `ts-multi-plug -hostname hello -https -- hello.js` - spawns a nodejs web server that is available at https://hello.my-ts.ts.net
-2. The `ENTRYPOINT` is `ts-multi-plug`. It becomes the init process!
-
-## usage (OUTDATED)
+One line to turn a server written in anything into an application node on your Tailnet!
 
 ```sh
+$ ./ts-multi-plug -hostname hello -- hello.js
+```
+
+## More examples
+
+```sh
+# build binaries
 $ make
 
 # go
-$ ./build/ts-plug -- ./build/hello
+$ ./build/ts-multi-plug -hn hello -- ./build/hello
 
 # node
-$ ./build/ts-plug -- cmd/examples/hello-node/hello.js
+$ ./build/ts-multi-plug -hn hello -- cmd/examples/hello-node/hello.js
 
 # python
-$ ./build/ts-plug -- cmd/examples/hello-python/hello.py
+$ ./build/ts-multi-plug -hn hello -- cmd/examples/hello-python/hello.py
 
 # ruby
-$ ./build/ts-plug -- cmd/examples/hello-ruby/hello.rb
+$ ./build/ts-multi-plug -hn hello -- cmd/examples/hello-ruby/hello.rb
 
 # perl
-$ ./build/ts-plug -- cmd/examples/hello-perl/hello.pl
+$ ./build/ts-multi-plug -hn hello -- cmd/examples/hello-perl/hello.pl
 
-# bash ... because we can!
-$ ./build/ts-plug -- cmd/examples/hello-sh/hello.sh
+# bash ... but of course!
+$ ./build/ts-multi-plug -hn hello -- cmd/examples/hello-sh/hello.sh
+
 ```
+
+## Funnel Support
+
+Make your application node available to everyone with [Funnel](https://tailscale.com/kb/1223/funnel)!
 
 Add `-funnel` to make it also accessible over the Internet (no identity though)
 
 ```sh
-# go
-$ ./build/ts-plug -funnel -- ./build/hello
 
-# node
-$ ./build/ts-plug -funnel -- cmd/examples/hello-node/hello.js
+# !!! Tip !!
+# Try accessing this with Tailscale connected and disconnected. Your
+# identity is automatically available in to the hello server
 
-# ... etc.
+$ ./build/ts-multi-plug -hn hello -funnel -- ./build/hello
 ```
+
+## Dude, Where's my Sidecar?!
+
+Using `ts-multi-plug` it is possible to remove the need for a tailscale sidecar
+when running containerized applications. In the `docker/` folder are examples injecting
+in `ts-multi-plug` and having it be the entrypoint. It is still very
+experimental but initial experiments are positive.
