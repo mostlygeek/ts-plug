@@ -1,12 +1,19 @@
 > [!WARNING]
 > Lots of Work in Progress stuff here!
 
-# Dude, Where's my Sidecar?!
+# ts-multi-plug
 
-- Turn a web server written in anything into a `tsnet.Server{}` with identity information.
-- Also `docker` contains various no-side car docker containers I'm testing
+Turn a server written in anything into a `tsnet.Server{}`.
 
-## usage
+## Dude, Where's my Sidecar?!
+
+The Docker sidecar pattern using `tailscale/tailscale` is the most common pattern to host applications on a tailnet. This repo explores a new no-sidecar approach. What we do differently is:
+
+1. Introduce `ts-multi-plug`, a `tsnet.Server{}` reverse proxy that also spawns a child server process.
+   - `ts-multi-plug -hostname hello -https -- hello.js` - spawns a nodejs web server that is available at https://hello.my-ts.ts.net
+2. The `ENTRYPOINT` is `ts-multi-plug`. It becomes the init process!
+
+## usage (OUTDATED)
 
 ```sh
 $ make
