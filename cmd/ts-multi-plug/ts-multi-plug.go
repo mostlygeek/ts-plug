@@ -43,7 +43,7 @@ var (
 	dnsEnable = flag.Bool("dns", false, "Enable DNS listener (default 53:53)")
 	flagDNS   = NewPortMapFlag(53, 53)
 
-	flagFunnel = flag.Bool("funnel", false, "Enable funnel for https listener")
+	flagPublic = flag.Bool("public", false, "Enable public https access")
 )
 
 func init() {
@@ -190,7 +190,7 @@ func main() {
 	// Start HTTPS listener if enabled
 	if flagHttps.IsSet() {
 		go func() {
-			if err := startHTTPSListener(ctx, ts, lc, hostname, flagHttps, *flagFunnel); err != nil {
+			if err := startHTTPSListener(ctx, ts, lc, hostname, flagHttps, *flagPublic); err != nil {
 				slog.Error("HTTPS listener failed", "error", err)
 				cancelCtx()
 			}

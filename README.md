@@ -32,27 +32,69 @@ $ ./build/ts-plug -hn hello -- cmd/examples/hello-perl/hello.pl
 
 # bash ... but of course!
 $ ./build/ts-plug -hn hello -- cmd/examples/hello-sh/hello.sh
-
 ```
 
-## Funnel Support
+ts-plug will automatically:
 
-Make your application node available to everyone with [Funnel](https://tailscale.com/kb/1223/funnel)!
+- start the upstream server
+- join your tailnet
+- generate a valid TLS cert and DNS name
+- reverse proxy all traffic to http://127.0.0.1:8080
 
-Add `-funnel` to make it also accessible over the Internet (no identity though)
+... and more:
+
+- `-dns`: DNS reverse proxying (see docker/pi-hole)
+- `-http`: http to http proxying
+- `-public`: exposes your service to the public internet
+- customize upstream ports with `-http-port`, `-https-port`, `-dns-port`,
+
+## Make it Public
+
+Use `-public` to share your server with everyone.
 
 ```sh
-
-# !!! Tip !!
-# Try accessing this with Tailscale connected and disconnected. Your
-# identity is automatically available in to the hello server
-
-$ ./build/ts-plug -hn hello -funnel -- ./build/hello
+$ ./build/ts-plug -hn hello -public -- ./build/hello
 ```
+
+It automatically provides a valid DNS name and TLS certificate, replacing the
+need for other localhost tunneling solutions. Additionally, requests from your
+tailnet include implicit identity information.
 
 ## Dude, Where's my Sidecar?!
 
-Using `ts-plug` it is possible to remove the need for a tailscale sidecar
-when running containerized applications. In the `docker/` folder are examples
-injecting in `ts-plug` and having it be the entrypoint. It is still very
-experimental but initial experiments are positive.
+`ts-plug` removes the requirement for a Tailscale sidecar when running apps in
+containers. Check out the examples in the `docker/` folder that show how to inject
+`ts-plug` as the entrypoint. It's still experimental but the initial results look good.
+
+## Help
+
+Use the `-h` flag to get all the CLI flags available to tsplug
+
+```sh
+$ ./build/ts-plug -h
+Usage of ./build/ts-plug:
+  -debug-tsnet
+        enable tsnet.Server logging
+  -dir string
+        directory to store tailscale state (default ".data")
+  -dns
+        Enable DNS listener (default 53:53)
+  -dns-port value
+        DNS port mapping (in:out or port) (default 53:53)
+  -funnel
+        Enable funnel for https listener
+  -hn string
+        hostname on tailnet (short) (default "tsmultiplug")
+  -hostname string
+        hostname on tailnet (default "tsmultiplug")
+  -http
+        Enable HTTP listener (default 80:8080)
+  -http-port value
+        HTTP port mapping (in:out or port) (default 80:8080)
+  -https
+        Enable HTTPS listener (default 443:8080)
+  -https-port value
+        HTTPS port mapping (in:out or port) (default 443:8080)
+  -log string
+        Log level (debug | info | warn | error) (default "info")
+```
