@@ -81,8 +81,6 @@ Usage of ./build/ts-plug:
         Enable DNS listener (default 53:53)
   -dns-port value
         DNS port mapping (in:out or port) (default 53:53)
-  -funnel
-        Enable funnel for https listener
   -hn string
         hostname on tailnet (short) (default "tsmultiplug")
   -hostname string
@@ -97,4 +95,6 @@ Usage of ./build/ts-plug:
         HTTPS port mapping (in:out or port) (default 443:8080)
   -log string
         Log level (debug | info | warn | error) (default "info")
+  -public
+        Enable public https access
 ```
