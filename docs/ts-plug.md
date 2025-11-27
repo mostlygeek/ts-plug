@@ -75,7 +75,7 @@ ts-plug -hostname webapp -- go run main.go
 
 ts-plug:
 1. Starts your upstream server process
-2. Connects to your Tailscale network
+2. Connects to your tailnet
 3. Provisions TLS certificates automatically
 4. Listens for connections on your tailnet
 5. Reverse proxies traffic to your local server
@@ -333,7 +333,7 @@ ts-plug -hostname api-v1 -https-port 443:5000 -- flask run
 
 | Feature | ts-plug | ts-unplug |
 |---------|---------|-----------|
-| Direction | Local → Tailnet | Tailnet → Local |
+| Direction | Local → tailnet | tailnet → Local |
 | Use Case | Share local services | Access remote services |
 | Starts Process | Yes | No |
 | TLS | Automatic | Proxies existing |

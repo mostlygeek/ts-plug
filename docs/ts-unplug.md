@@ -169,7 +169,7 @@ http localhost:8080/health  # HTTPie
 ```
 
 ts-unplug:
-1. Connects to your Tailscale network
+1. Connects to your tailnet
 2. Establishes a connection to the remote service
 3. Listens on localhost
 4. Forwards all traffic through the encrypted Tailscale connection
@@ -327,7 +327,7 @@ open http://localhost:3000
 
 | Feature | ts-plug | ts-unplug |
 |---------|---------|-----------|
-| Direction | Local → Tailnet | Tailnet → Local |
+| Direction | Local → tailnet | tailnet → Local |
 | Use Case | Share local services | Access remote services |
 | Starts Process | Yes | No |
 | TLS | Automatic | Proxies existing |

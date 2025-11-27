@@ -1,6 +1,6 @@
 # ts-plug
 
-Expose local services to your Tailscale network with automatic TLS and DNS.
+Expose local services to your tailnet with automatic TLS and DNS.
 
 ## Build
 
