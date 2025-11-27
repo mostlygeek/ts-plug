@@ -1,20 +1,14 @@
 > [!WARNING]
 > Lots of Work in Progress stuff here!
 
-# ts-plug
+# What's in this repo?
 
-One line to turn a server written in anything into an application node on your tailnet!
-
-```sh
-./ts-plug -hostname hello -- hello.js
-```
-
-## What's in this repo?
+One-liner tools to expose things to/from your tailnet!
 
 | Binary | Purpose | Use Case |
 |--------|---------|----------|
-| **ts-plug** | Expose localhost to your tailnet | Share your dev server, deploy without sidecars |
-| **ts-unplug** | Bring tailnet services to localhost | Access remote databases/APIs as if they were local |
+| **ts-plug** | Expose localhost to your tailnet | Share your dev server to your tailnet, deploy without sidecars |
+| **ts-unplug** | Bring tailnet services to localhost | Access tailnet-based databases/APIs as if they were local |
 
 ## Quick Start
 

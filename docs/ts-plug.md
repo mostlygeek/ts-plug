@@ -49,6 +49,37 @@ Run a Go server:
 ts-plug -hostname webapp -- go run main.go
 ```
 
+## How It Works
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Your Local Machine                                     │
+│                                                         │
+│  ┌──────────────┐          ┌──────────────┐             │
+│  │  ts-plug     │  starts  │ Your Server  │             │
+│  │              │ ──────>  │ localhost:80 │             │
+│  └──────┬───────┘          └──────────────┘             │
+│         │                                               │
+└─────────┼───────────────────────────────────────────────┘
+          │ Tailscale (encrypted)
+          │
+┌─────────┼───────────────────────────────────────────────┐
+│  Your tailnet                                           │
+│         │                                               │
+│         │    ┌──────────────┐    ┌──────────────┐       │
+│         └──> │   HTTPS:443  │───>│ Team Members │       │
+│              │   (with TLS) │    │   Devices    │       │
+│              └──────────────┘    └──────────────┘       │
+└─────────────────────────────────────────────────────────┘
+```
+
+ts-plug:
+1. Starts your upstream server process
+2. Connects to your Tailscale network
+3. Provisions TLS certificates automatically
+4. Listens for connections on your tailnet
+5. Reverse proxies traffic to your local server
+
 ## Configuration Flags
 
 ### Required
@@ -177,7 +208,7 @@ if os.getenv('TSPLUG_ACTIVE') == '1':
     print("Running behind ts-plug!")
 ```
 
-## Security Features
+## Security Considerations
 
 ### Automatic TLS
 
@@ -297,6 +328,16 @@ ts-plug -public -hostname my-site -- python -m http.server 8080
 ```sh
 ts-plug -hostname api-v1 -https-port 443:5000 -- flask run
 ```
+
+## Comparison with ts-unplug
+
+| Feature | ts-plug | ts-unplug |
+|---------|---------|-----------|
+| Direction | Local → Tailnet | Tailnet → Local |
+| Use Case | Share local services | Access remote services |
+| Starts Process | Yes | No |
+| TLS | Automatic | Proxies existing |
+| Public Access | Optional | No |
 
 ## See Also
 
