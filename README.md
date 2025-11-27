@@ -1,100 +1,89 @@
 > [!WARNING]
 > Lots of Work in Progress stuff here!
 
-# ts-plug
+# What's in this repo?
 
-One line to turn a server written in anything into an application node on your Tailnet!
+One-liner tools to expose things to/from your tailnet!
 
+| Binary | Purpose | Use Case |
+|--------|---------|----------|
+| **ts-plug** | Expose localhost to your tailnet | Share your dev server to your tailnet, deploy without sidecars |
+| **ts-unplug** | Bring tailnet services to localhost | Access tailnet-based databases/APIs as if they were local |
+
+## Quick Start
+
+**Build:**
 ```sh
-$ ./ts-plug -hostname hello -- hello.js
+make                    # Build both binaries
+make install            # Install to $GOPATH/bin
 ```
 
-## More examples
-
+**ts-plug** - Share a local service:
 ```sh
-# build binaries
-$ make
-
-# go
-$ ./build/ts-plug -hn hello -- ./build/hello
-
-# node
-$ ./build/ts-plug -hn hello -- cmd/examples/hello-node/hello.js
-
-# python
-$ ./build/ts-plug -hn hello -- cmd/examples/hello-python/hello.py
-
-# ruby
-$ ./build/ts-plug -hn hello -- cmd/examples/hello-ruby/hello.rb
-
-# perl
-$ ./build/ts-plug -hn hello -- cmd/examples/hello-perl/hello.pl
-
-# bash ... but of course!
-$ ./build/ts-plug -hn hello -- cmd/examples/hello-sh/hello.sh
+./build/ts-plug -hostname myapp -- python -m http.server 8080
+# Access at https://myapp.tailnet-name.ts.net
 ```
 
-ts-plug will automatically:
-
-- start the upstream server
-- join your tailnet
-- generate a valid TLS cert and DNS name
-- reverse proxy all traffic to http://127.0.0.1:8080
-
-... and more:
-
-- `-dns`: DNS reverse proxying (see docker/pi-hole)
-- `-http`: http to http proxying
-- `-public`: exposes your service to the public internet
-- customize upstream ports with `-http-port`, `-https-port`, `-dns-port`,
-
-## Make it Public
-
-Use `-public` to share your server with everyone.
-
+**ts-unplug** - Access a remote service:
 ```sh
-$ ./build/ts-plug -hn hello -public -- ./build/hello
+./build/ts-unplug -dir ./state -port 8080 api.tailnet-name.ts.net
+# Access at http://localhost:8080
 ```
 
-It automatically provides a valid DNS name and TLS certificate, replacing the
-need for other localhost tunneling solutions. Additionally, requests from your
-tailnet include implicit identity information.
+## Key Features
 
-## Dude, Where's my Sidecar?!
+**ts-plug** automatically:
+- Starts your upstream server
+- Joins your tailnet with TLS and DNS
+- Reverse proxies to localhost:8080
+- Optional public access with `-public`
+- Supports HTTP, HTTPS, and DNS protocols
 
-`ts-plug` removes the requirement for a Tailscale sidecar when running apps in
-containers. Check out the examples in the `docker/` folder that show how to inject
-`ts-plug` as the entrypoint. It's still experimental but the initial results look good.
+**ts-unplug** provides:
+- Reverse proxy from tailnet to localhost
+- Access to services requiring localhost URLs
+- Simple port mapping
 
-## Help
+## Examples
 
-Use the `-h` flag to get all the CLI flags available to tsplug
-
+Run servers in any language:
 ```sh
-$ ./build/ts-plug -h
-Usage of ./build/ts-plug:
-  -debug-tsnet
-        enable tsnet.Server logging
-  -dir string
-        directory to store tailscale state (default ".data")
-  -dns
-        Enable DNS listener (default 53:53)
-  -dns-port value
-        DNS port mapping (in:out or port) (default 53:53)
-  -hn string
-        hostname on tailnet (short) (default "tsmultiplug")
-  -hostname string
-        hostname on tailnet (default "tsmultiplug")
-  -http
-        Enable HTTP listener (default 80:8080)
-  -http-port value
-        HTTP port mapping (in:out or port) (default 80:8080)
-  -https
-        Enable HTTPS listener (default 443:8080)
-  -https-port value
-        HTTPS port mapping (in:out or port) (default 443:8080)
-  -log string
-        Log level (debug | info | warn | error) (default "info")
-  -public
-        Enable public https access
+make examples
+
+# Try different languages with ts-plug
+./build/ts-plug -hn hello -- ./build/hello        # Go
+./build/ts-plug -hn hello -- cmd/examples/hello/hello.js   # Node
+./build/ts-plug -hn hello -- cmd/examples/hello/hello.py   # Python
 ```
+
+See [cmd/examples/](./cmd/examples/) for more.
+
+## Docker Integration
+
+Use ts-plug as an entrypoint to eliminate sidecar containers:
+
+```dockerfile
+COPY ts-plug /usr/local/bin/
+ENTRYPOINT ["ts-plug", "-hostname", "myapp", "--"]
+CMD ["npm", "start"]
+```
+
+See [docker/](./docker/) for Pi-hole, Open WebUI, and Audiobookshelf examples.
+
+## Documentation
+
+- **[Complete Documentation](./docs/)** - Guides, use cases, and detailed examples
+- **[ts-plug Guide](./docs/ts-plug.md)** - Full ts-plug documentation
+- **[ts-unplug Guide](./docs/ts-unplug.md)** - Full ts-unplug documentation
+- **[Use Cases](./docs/use-cases.md)** - Real-world scenarios
+- **[Docker Guide](./docs/docker.md)** - Container integration
+
+**Quick help:**
+```sh
+./build/ts-plug -h
+./build/ts-unplug -h
+```
+
+## License
+
+BSD-3-Clause - See [LICENSE](./LICENSE)
