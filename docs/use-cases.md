@@ -317,6 +317,61 @@ ts-plug -hostname sensor-garage -- python sensor.py
 # No complex networking, no public IPs
 ```
 
+### Cross-Tailnet Proxy Access
+
+**Scenario:** You need to route local traffic through a proxy that's only accessible on a different tailnet.
+
+For example:
+- Your local device is on tailnet A
+- The proxy server is on tailnet B
+- You want your local app to use the proxy without direct access
+
+**Solution:** Use ts-unplug to expose the remote proxy locally, then configure your app to use localhost as the proxy:
+
+```sh
+# Terminal 1: Make the remote proxy available locally
+ts-unplug -dir ./state-proxy -port 8888 proxy.tailnet-b.ts.net:3128
+
+# Terminal 2: Configure your app to use the local proxy
+export HTTP_PROXY=http://localhost:8888
+export HTTPS_PROXY=http://localhost:8888
+
+# Run your application - all traffic now goes through the remote proxy
+curl https://api.example.com
+# This request routes: app → localhost:8888 → tailnet-b proxy → internet
+```
+
+**Advanced example with multiple proxies:**
+```sh
+# Corporate proxy for work traffic
+ts-unplug -dir ./state-corp-proxy -port 8888 corp-proxy.work-tailnet.ts.net:3128 &
+
+# Research proxy for academic traffic
+ts-unplug -dir ./state-research-proxy -port 8889 proxy.university-tailnet.ts.net:8080 &
+
+# Use different proxies for different apps
+HTTP_PROXY=http://localhost:8888 curl https://internal.corp.com  # Uses corporate proxy
+HTTP_PROXY=http://localhost:8889 curl https://research.edu       # Uses research proxy
+```
+
+**Docker container example:**
+```sh
+# Start proxy tunnel
+ts-unplug -dir ./state -port 3128 proxy.other-tailnet.ts.net:3128
+
+# Run container using host's proxy
+docker run --network host \
+  -e HTTP_PROXY=http://localhost:3128 \
+  -e HTTPS_PROXY=http://localhost:3128 \
+  myapp
+```
+
+**Benefits:**
+- Access proxies on different tailnets without complex routing
+- No need to expose proxy publicly
+- Can use organization-specific proxies from any device
+- Works with apps that only support HTTP proxy environment variables
+
 ## Advanced Patterns
 
 ### Service Mesh Alternative

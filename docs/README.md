@@ -87,6 +87,7 @@ CMD ["npm", "start"]
 | Test against staging | ts-unplug | `ts-unplug -dir ./state -port 8080 api-staging.ts.net` |
 | Deploy in container | ts-plug | Use as Docker ENTRYPOINT |
 | Multi-cloud access | ts-unplug | Multiple instances for each service |
+| Route through remote proxy | ts-unplug | `ts-unplug -dir ./state -port 8888 proxy.ts.net:3128` |
 
 ### Architecture Overview
 
