@@ -11,15 +11,37 @@ endif
 BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 
-all: examples darwin linux
+all: examples binaries
+
+binaries: ts-plug ts-unplug
+
+ts-plug:
 	go build -o build/ts-plug ./cmd/ts-multi-plug
 
-darwin:
+ts-unplug:
+	go build -o build/ts-unplug ./cmd/ts-unplug
+
+darwin: darwin-ts-plug darwin-ts-unplug
+
+darwin-ts-plug:
 	GOOS=darwin GOARCH=arm64 go build -o build/ts-plug-darwin-arm64 ./cmd/ts-multi-plug
 
-linux:
+darwin-ts-unplug:
+	GOOS=darwin GOARCH=arm64 go build -o build/ts-unplug-darwin-arm64 ./cmd/ts-unplug
+
+linux: linux-ts-plug linux-ts-unplug
+
+linux-ts-plug:
 	GOOS=linux GOARCH=arm64 go build -o build/ts-plug-linux-arm64 ./cmd/ts-multi-plug
 	GOOS=linux GOARCH=amd64 go build -o build/ts-plug-linux-amd64 ./cmd/ts-multi-plug
+
+linux-ts-unplug:
+	GOOS=linux GOARCH=arm64 go build -o build/ts-unplug-linux-arm64 ./cmd/ts-unplug
+	GOOS=linux GOARCH=amd64 go build -o build/ts-unplug-linux-amd64 ./cmd/ts-unplug
+
+install: binaries
+	cp build/ts-plug $(GOPATH)/bin/ts-plug
+	cp build/ts-unplug $(GOPATH)/bin/ts-unplug
 
 clean:
 	rm -rf $(BUILD_DIR)/*
@@ -36,4 +58,4 @@ test: examples
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-.PHONY: all test examples clean
+.PHONY: all test examples clean binaries ts-plug ts-unplug darwin darwin-ts-plug darwin-ts-unplug linux linux-ts-plug linux-ts-unplug install

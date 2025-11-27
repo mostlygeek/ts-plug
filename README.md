@@ -3,36 +3,138 @@
 
 # ts-plug
 
-One line to turn a server written in anything into an application node on your Tailnet!
+One line to turn a server written in anything into an application node on your tailnet!
 
 ```sh
 $ ./ts-plug -hostname hello -- hello.js
 ```
 
-## More examples
+## Table of Contents
+
+- [Binaries Overview](#binaries-overview)
+- [Quick Start](#quick-start)
+- [Examples](#examples)
+- [Docker Integration](#docker-integration)
+- [Documentation](#documentation)
+
+## Binaries Overview
+
+This repository provides two complementary tools for Tailscale connectivity:
+
+| Binary | Purpose | Direction | Use Case |
+|--------|---------|-----------|----------|
+| **ts-plug** | Expose localhost to Tailscale | Local → tailnet | Share your dev server with teammates |
+| **ts-unplug** | Expose Tailscale to localhost | tailnet → Local | Access remote services locally |
+
+### Architecture Diagram
+
+```
+ts-plug: Expose Local Service to tailnet
+┌──────────────┐         ┌──────────────┐         ┌──────────────┐
+│ Your Server  │  HTTP   │   ts-plug    │  HTTPS  │   tailnet    │
+│ localhost:80 │ ──────> │ (w/ TLS)     │ ──────> │   Devices    │
+└──────────────┘         └──────────────┘         └──────────────┘
+
+ts-unplug: Expose tailnet Service to Local
+┌──────────────┐         ┌──────────────┐         ┌──────────────┐
+│   tailnet    │  HTTPS  │  ts-unplug   │  HTTP   │ localhost:80 │
+│   Service    │ ──────> │              │ ──────> │ (your apps)  │
+└──────────────┘         └──────────────┘         └──────────────┘
+```
+
+### When to Use Each Tool
+
+**Use `ts-plug` when:**
+- Running a local dev server you want to share
+- Testing webhooks that need a public URL
+- Deploying services in containers without sidecars
+- Sharing a local service with your team
+
+**Use `ts-unplug` when:**
+- Accessing a remote Tailscale service as if it's local
+- Testing against a staging environment on your tailnet
+- Developing against services that expect localhost
+- Using tools that don't support HTTPS or custom domains
+
+## Quick Start
+
+### Building
+
+Build both binaries:
+```sh
+make
+```
+
+Build platform-specific binaries:
+```sh
+make darwin  # macOS arm64
+make linux   # Linux arm64 and amd64
+```
+
+Install to $GOPATH/bin:
+```sh
+make install
+```
+
+### ts-plug: Expose Local Service
+
+Share a local web server on your tailnet:
+```sh
+./build/ts-plug -hostname myapp -- python -m http.server 8080
+```
+
+Make it publicly accessible:
+```sh
+./build/ts-plug -hostname myapp -public -- python -m http.server 8080
+```
+
+### ts-unplug: Access Remote Service
+
+Bring a remote Tailscale service to localhost:
+```sh
+./build/ts-unplug -dir ./state -port 8080 myserver.tailnet.ts.net
+# Now access at http://localhost:8080
+```
+
+Access a service on a specific port:
+```sh
+./build/ts-unplug -dir ./state -port 3000 database.tailnet.ts.net:5432
+```
+
+For detailed usage of each binary, see:
+- [ts-plug Documentation](./cmd/ts-multi-plug/)
+- [ts-unplug Documentation](./cmd/ts-unplug/README.md)
+
+## Examples
+
+The `cmd/examples/` directory contains example servers in multiple languages:
 
 ```sh
-# build binaries
-$ make
+# Build examples
+make examples
 
-# go
-$ ./build/ts-plug -hn hello -- ./build/hello
+# Go server
+./build/ts-plug -hn hello -- ./build/hello
 
-# node
-$ ./build/ts-plug -hn hello -- cmd/examples/hello-node/hello.js
+# Node.js
+./build/ts-plug -hn hello -- cmd/examples/hello/hello.js
 
-# python
-$ ./build/ts-plug -hn hello -- cmd/examples/hello-python/hello.py
+# Python
+./build/ts-plug -hn hello -- cmd/examples/hello/hello.py
 
-# ruby
-$ ./build/ts-plug -hn hello -- cmd/examples/hello-ruby/hello.rb
+# Ruby
+./build/ts-plug -hn hello -- cmd/examples/hello/hello.rb
 
-# perl
-$ ./build/ts-plug -hn hello -- cmd/examples/hello-perl/hello.pl
+# Perl
+./build/ts-plug -hn hello -- cmd/examples/hello/hello.pl
 
-# bash ... but of course!
-$ ./build/ts-plug -hn hello -- cmd/examples/hello-sh/hello.sh
+# Bash
+./build/ts-plug -hn hello -- cmd/examples/hello/hello.sh
 ```
+
+See [cmd/examples/](./cmd/examples/) for more details.
+
+## ts-plug Features
 
 ts-plug will automatically:
 
@@ -60,41 +162,61 @@ It automatically provides a valid DNS name and TLS certificate, replacing the
 need for other localhost tunneling solutions. Additionally, requests from your
 tailnet include implicit identity information.
 
-## Dude, Where's my Sidecar?!
+## Docker Integration
 
 `ts-plug` removes the requirement for a Tailscale sidecar when running apps in
 containers. Check out the examples in the `docker/` folder that show how to inject
-`ts-plug` as the entrypoint. It's still experimental but the initial results look good.
+`ts-plug` as the entrypoint:
 
-## Help
+- [Pi-hole](./docker/pi-hole/) - DNS-based ad blocker
+- [Open WebUI](./docker/openwebui/) - ChatGPT-style web interface
+- [Audiobookshelf](./docker/audiobookshelf/) - Audiobook and podcast server
 
-Use the `-h` flag to get all the CLI flags available to tsplug
+It's still experimental but the initial results look good.
 
+## Documentation
+
+### Command-line Help
+
+**ts-plug:**
 ```sh
-$ ./build/ts-plug -h
-Usage of ./build/ts-plug:
-  -debug-tsnet
-        enable tsnet.Server logging
-  -dir string
-        directory to store tailscale state (default ".data")
-  -dns
-        Enable DNS listener (default 53:53)
-  -dns-port value
-        DNS port mapping (in:out or port) (default 53:53)
-  -hn string
-        hostname on tailnet (short) (default "tsmultiplug")
-  -hostname string
-        hostname on tailnet (default "tsmultiplug")
-  -http
-        Enable HTTP listener (default 80:8080)
-  -http-port value
-        HTTP port mapping (in:out or port) (default 80:8080)
-  -https
-        Enable HTTPS listener (default 443:8080)
-  -https-port value
-        HTTPS port mapping (in:out or port) (default 443:8080)
-  -log string
-        Log level (debug | info | warn | error) (default "info")
-  -public
-        Enable public https access
+./build/ts-plug -h
 ```
+
+**ts-unplug:**
+```sh
+./build/ts-unplug -h
+```
+
+### Detailed Guides
+
+- **[ts-plug Guide](./docs/ts-plug.md)** - Complete guide for exposing local services
+- **[ts-unplug Guide](./docs/ts-unplug.md)** - Complete guide for accessing remote services
+- **[Docker Examples](./docs/docker.md)** - Using ts-plug in containers
+- **[Use Cases](./docs/use-cases.md)** - Real-world scenarios and patterns
+
+### Quick Reference
+
+**ts-plug flags:**
+- `-hostname/-hn` - Hostname on tailnet (default: "tsmultiplug")
+- `-dir` - Directory to store Tailscale state (default: ".data")
+- `-http` - Enable HTTP listener (default: 80:8080)
+- `-https` - Enable HTTPS listener (default: 443:8080)
+- `-dns` - Enable DNS listener (default: 53:53)
+- `-public` - Enable public HTTPS access (Tailscale Funnel)
+- `-log` - Log level: debug, info, warn, error (default: "info")
+
+**ts-unplug flags:**
+- `-dir` - (required) Directory for tsnet server state
+- `-hostname` - Hostname for the tsnet server (default: "tsunplug")
+- `-port` - Local port to listen on (default: 80)
+- `-debug-tsnet` - Enable tsnet.Server logging
+
+## Contributing
+
+Contributions welcome! This is a work-in-progress project exploring new patterns
+for Tailscale integration.
+
+## License
+
+BSD-3-Clause - See [LICENSE](./LICENSE)
