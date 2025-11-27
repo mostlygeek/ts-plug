@@ -89,27 +89,7 @@ CMD ["npm", "start"]
 | Multi-cloud access | ts-unplug | Multiple instances for each service |
 | Route through remote proxy | ts-unplug | `ts-unplug -dir ./state -port 8888 proxy.ts.net:3128` |
 
-### Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Your tailnet                            │
-│                                                             │
-│  ┌──────────────┐         ┌──────────────┐                  │
-│  │   ts-plug    │         │  ts-unplug   │                  │
-│  │ Expose Local │         │ Access Remote│                  │
-│  └──────┬───────┘         └──────┬───────┘                  │
-│         │                        │                          │
-└─────────┼────────────────────────┼──────────────────────────┘
-          │                        │
-    ┌─────▼─────┐             ┌────▼─────┐
-    │   Local   │             │  Remote  │
-    │  Service  │             │ Service  │
-    │ (outbound)│             │ (inbound)│
-    └───────────┘             └──────────┘
-```
-
-### Common Flags Comparison
+### Common Flags
 
 | Flag | ts-plug | ts-unplug |
 |------|---------|-----------|
@@ -122,36 +102,20 @@ CMD ["npm", "start"]
 
 ## Getting Started
 
-### Installation
-
-Build both binaries:
 ```sh
-git clone https://github.com/yourorg/ts-plug
-cd ts-plug
-make
+make                    # Build both binaries
+make install            # Install to $GOPATH/bin
 ```
 
-Install to $GOPATH/bin:
+Try ts-plug:
 ```sh
-make install
+./build/ts-plug -hostname test -- python -m http.server 8080
 ```
 
-### First Steps
-
-1. **Try ts-plug** - Share a local web server
-   ```sh
-   python -m http.server 8080 &
-   ./build/ts-plug -hostname test -- python -m http.server 8080
-   # Visit https://test.yournet.ts.net
-   ```
-
-2. **Try ts-unplug** - Access a remote service
-   ```sh
-   ./build/ts-unplug -dir ./state -port 8080 someservice.yournet.ts.net
-   # Access at http://localhost:8080
-   ```
-
-3. **Explore examples** - Check out [cmd/examples/](../cmd/examples/)
+Try ts-unplug:
+```sh
+./build/ts-unplug -dir ./state -port 8080 someservice.yournet.ts.net
+```
 
 ## Navigation
 
